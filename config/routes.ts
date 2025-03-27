@@ -119,6 +119,21 @@ export default [
 			},
 		]
 	},
+
+	{
+		path: "/diploma-management",
+		name: "DipomaManagement",
+		component: "./DiplomaManagement/App",
+		icon: "QuestionCircleOutlined",
+		"routes": [
+			{
+				"path": "/diploma-management/dash-board",
+				"name": "Dash Board",
+				component: "./DiplomaManagement/App",
+				
+			},
+		]
+	},
 	
 	// DANH MUC HE THONG
 	// {
