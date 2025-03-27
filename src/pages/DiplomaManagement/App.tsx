@@ -1,161 +1,158 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Table, Modal, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import useDiplomaModel, { DiplomaInfo, DiplomaField } from '../../models/DiplomaManagement/diploma-model';
-import DiplomaForm from '../../components/Form/DoplomaForm';
+import React, { useState } from 'react';
+import { Table, Button, Modal, Form, Input, DatePicker, Popconfirm } from 'antd';
+import { useModel } from 'umi';
+import { v4 as uuidv4 } from 'uuid';
+import moment from 'moment';
 
-const DiplomaManagementPage: React.FC = () => {
-  const { 
-    diplomaInfos, 
-    diplomaFields, 
-    actions: { 
-      addDiplomaInfo, 
-      configureFields 
-    } 
-  } = useDiplomaModel();
+const DiplomaBookManagement: React.FC = () => {
+    const { diplomaBooks, addDiplomaBook, updateDiplomaBook } = useModel('DiplomaManagement.diploma-model');
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [editingBook, setEditingBook] = useState<any>(null);
+    const [form] = Form.useForm();
 
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [isFieldConfigModalVisible, setIsFieldConfigModalVisible] = useState(false);
-  const [selectedDiploma, setSelectedDiploma] = useState<DiplomaInfo | undefined>(undefined);
-  const [newFields, setNewFields] = useState<DiplomaField[]>([]);
+    // Handle add/edit diploma book
+    const handleSaveBook = (values: any) => {
+        const bookData = {
+            id: editingBook ? editingBook.id : uuidv4(),
+            year: values.year.year(), // Extract year from DatePicker
+            startDate: values.startDate.format('YYYY-MM-DD'),
+            endDate: values.endDate.format('YYYY-MM-DD'),
+            currentEntryNumber: editingBook ? editingBook.currentEntryNumber : 0
+        };
 
-  const columns = [
-    {
-      title: 'Entry Number',
-      dataIndex: 'entry_number',
-      key: 'entry_number',
-    },
-    {
-      title: 'Diploma Serial',
-      dataIndex: 'diploma_serial',
-      key: 'diploma_serial',
-    },
-    {
-      title: 'Student ID',
-      dataIndex: 'student_id',
-      key: 'student_id',
-    },
-    {
-      title: 'Full Name',
-      dataIndex: 'full_name',
-      key: 'full_name',
-    },
-    {
-      title: 'Date of Birth',
-      dataIndex: 'date_of_birth',
-      key: 'date_of_birth',
-      render: (date: Date) => date.toLocaleDateString()
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (record: DiplomaInfo) => (
+        if (editingBook) {
+            // Edit existing book
+            updateDiplomaBook(bookData);
+        } else {
+            // Add new book
+            addDiplomaBook(bookData);
+        }
+
+        setIsModalVisible(false);
+        setEditingBook(null);
+        form.resetFields();
+    };
+
+    // Handle edit
+    const handleEdit = (book: any) => {
+        setEditingBook(book);
+        form.setFieldsValue({
+            year: moment().year(book.year),
+            startDate: moment(book.startDate),
+            endDate: moment(book.endDate)
+        });
+        setIsModalVisible(true);
+    };
+
+    const columns = [
+        {
+            title: 'Year',
+            dataIndex: 'year',
+            key: 'year',
+        },
+        {
+            title: 'Start Date',
+            dataIndex: 'startDate',
+            key: 'startDate',
+        },
+        {
+            title: 'End Date',
+            dataIndex: 'endDate',
+            key: 'endDate',
+        },
+        {
+            title: 'Current Entry Number',
+            dataIndex: 'currentEntryNumber',
+            key: 'currentEntryNumber',
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_, record) => (
+                <>
+                    <Button type="link" onClick={() => handleEdit(record)}>Edit</Button>
+                </>
+            ),
+        }
+    ];
+
+    return (
         <div>
-          <Button 
-            icon={<EditOutlined />} 
-            onClick={() => {
-              setSelectedDiploma(record);
-              setIsFormVisible(true);
-            }}
-          >
-            Edit
-          </Button>
-          <Button 
-            icon={<DeleteOutlined />} 
-            danger 
-            style={{ marginLeft: 8 }}
-            onClick={() => handleDelete(record)}
-          >
-            Delete
-          </Button>
+            <Button 
+                type="primary" 
+                style={{ marginBottom: 16 }} 
+                onClick={() => {
+                    setEditingBook(null); 
+                    form.resetFields();
+                    setIsModalVisible(true);
+                }}
+            >
+                Add Diploma Book
+            </Button>
+
+            <Table 
+                columns={columns} 
+                dataSource={diplomaBooks} 
+                rowKey="id" 
+            />
+
+            <Modal
+                title={editingBook ? "Edit Diploma Book" : "Add New Diploma Book"}
+                visible={isModalVisible}
+                footer={null}
+                onCancel={() => {
+                    setIsModalVisible(false);
+                    setEditingBook(null);
+                }}
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSaveBook}
+                >
+                    <Form.Item
+                        name="year"
+                        label="Year"
+                        rules={[{ required: true, message: 'Please select the year' }]}
+                    >
+                        <DatePicker 
+                            picker="year" 
+                            style={{ width: '100%' }} 
+                            placeholder="Select Year"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="startDate"
+                        label="Start Date"
+                        rules={[{ required: true, message: 'Please select start date' }]}
+                    >
+                        <DatePicker 
+                            style={{ width: '100%' }} 
+                            placeholder="Select Start Date"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="endDate"
+                        label="End Date"
+                        rules={[{ required: true, message: 'Please select end date' }]}
+                    >
+                        <DatePicker 
+                            style={{ width: '100%' }} 
+                            placeholder="Select End Date"
+                        />
+                    </Form.Item>
+
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                            {editingBook ? 'Update' : 'Add'} Diploma Book
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div>
-      )
-    }
-  ];
-
-  const handleDelete = (record: DiplomaInfo) => {
-    Modal.confirm({
-      title: 'Are you sure you want to delete this diploma record?',
-      onOk() {
-        // TODO: Implement actual deletion logic
-        message.success('Diploma record deleted successfully');
-      }
-    });
-  };
-
-  const handleAddDiploma = (diplomaInfo: DiplomaInfo) => {
-    addDiplomaInfo(diplomaInfo)
-      .then(() => {
-        message.success('Diploma information added successfully');
-        setIsFormVisible(false);
-      })
-      .catch(error => {
-        message.error('Failed to add diploma information');
-        console.error(error);
-      });
-  };
-
-  const handleFieldConfiguration = () => {
-    configureFields(newFields)
-      .then(() => {
-        message.success('Fields configured successfully');
-        setIsFieldConfigModalVisible(false);
-      })
-      .catch(error => {
-        message.error('Failed to configure fields');
-        console.error(error);
-      });
-  };
-
-  return (
-    <div>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        marginBottom: 16 
-      }}>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          onClick={() => {
-            setSelectedDiploma(undefined);
-            setIsFormVisible(true);
-          }}
-        >
-          Add Diploma
-        </Button>
-        <Button 
-          onClick={() => setIsFieldConfigModalVisible(true)}
-        >
-          Configure Additional Fields
-        </Button>
-      </div>
-
-      <Table 
-        columns={columns} 
-        dataSource={diplomaInfos} 
-        rowKey="id"
-      />
-
-      <DiplomaForm 
-        visible={isFormVisible}
-        onCancel={() => setIsFormVisible(false)}
-        onSubmit={handleAddDiploma}
-        initialData={selectedDiploma}
-        additionalFields={diplomaFields}
-      />
-
-      {/* Field Configuration Modal */}
-      <Modal
-        title="Configure Additional Fields"
-        visible={isFieldConfigModalVisible}
-        onOk={handleFieldConfiguration}
-        onCancel={() => setIsFieldConfigModalVisible(false)}
-      >
-        {/* TODO: Add field configuration form */}
-      </Modal>
-    </div>
-  );
+    );
 };
 
-export default DiplomaManagementPage;
+export default DiplomaBookManagement;

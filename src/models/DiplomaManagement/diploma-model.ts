@@ -1,285 +1,222 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-// Utility functions for localStorage
-const LocalStorageUtils = {
-  getItem: <T>(key: string, defaultValue: T): T => {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  },
-  
-  setItem: <T>(key: string, value: T) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-};
-
-// Define TypeScript interfaces (same as previous model)
+// Diploma Book Interface
 export interface DiplomaBook {
-  id?: number;
-  year: number;
-  current_entry_num: number;
-  created_at?: Date;
-  updated_at?: Date;
+    id: string;
+    year: number;
+    startDate: string;
+    endDate: string;
+    currentEntryNumber: number;
 }
 
+// Graduation Decision Interface
 export interface GraduationDecision {
-  id?: number;
-  decision_number: string;
-  issue_date: Date;
-  summary?: string;
-  diploma_book_id: number;
-  created_at?: Date;
+    id: string;
+    decisionNumber: string;
+    issuanceDate: string;
+    summary: string;
+    diplomaBookId: string;
+    totalLookups: number;
 }
 
-export interface DiplomaField {
-  id?: number;
-  diploma_info_id?: number;
-  field_name: string;
-  data_type: 'String' | 'Number' | 'Date';
-  value_string?: string;
-  value_number?: number;
-  value_date?: Date;
-  created_at?: Date;
+// Diploma Field Template Interface
+export interface DiplomaFieldTemplate {
+    id: string;
+    name: string;
+    dataType: 'String' | 'Number' | 'Date';
+    isRequired: boolean;
+    defaultValue?: string | number | Date;
 }
 
-export interface DiplomaInfo {
-  id?: number;
-  entry_number: number;
-  diploma_serial: string;
-  student_id: string;
-  full_name: string;
-  date_of_birth: Date;
-  graduation_decision_id: number;
-  diploma_book_id: number;
-  created_at?: Date;
-  additional_fields?: DiplomaField[];
+// Diploma Information Interface
+export interface DiplomaInformation {
+    id: string;
+    diplomaBookId: string;
+    decisionId: string;
+    bookEntryNumber: number;
+    diplomaSerialNumber: string;
+    studentId: string;
+    fullName: string;
+    dateOfBirth: string;
+    additionalFields: Record<string, string | number | Date>;
 }
 
-export interface DiplomaLookupLog {
-  id?: number;
-  graduation_decision_id: number;
-  lookup_count: number;
-  lookup_date?: Date;
+// Diploma Lookup Record Interface
+export interface DiplomaLookupRecord {
+    id: string;
+    diplomaId: string;
+    lookupDate: string;
+    lookupSource: string;
 }
 
-// Local storage keys
-const STORAGE_KEYS = {
-  DIPLOMA_BOOKS: 'diploma_books',
-  GRADUATION_DECISIONS: 'graduation_decisions',
-  DIPLOMA_INFOS: 'diploma_infos',
-  DIPLOMA_FIELDS: 'diploma_fields',
-  DIPLOMA_LOOKUP_LOGS: 'diploma_lookup_logs'
+export default () => {
+    // State management for diploma-related entities
+    const [diplomaBooks, setDiplomaBooks] = useState<DiplomaBook[]>(() => {
+        const storedBooks = localStorage.getItem('diplomaBooks');
+        return storedBooks ? JSON.parse(storedBooks) : [];
+    });
+
+    const [graduationDecisions, setGraduationDecisions] = useState<GraduationDecision[]>(() => {
+        const storedDecisions = localStorage.getItem('graduationDecisions');
+        return storedDecisions ? JSON.parse(storedDecisions) : [];
+    });
+
+    const [diplomaFieldTemplates, setDiplomaFieldTemplates] = useState<DiplomaFieldTemplate[]>(() => {
+        const storedTemplates = localStorage.getItem('diplomaFieldTemplates');
+        return storedTemplates ? JSON.parse(storedTemplates) : [];
+    });
+
+    const [diplomaInformations, setDiplomaInformations] = useState<DiplomaInformation[]>(() => {
+        const storedDiplomas = localStorage.getItem('diplomaInformations');
+        return storedDiplomas ? JSON.parse(storedDiplomas) : [];
+    });
+
+    const [diplomaLookupRecords, setDiplomaLookupRecords] = useState<DiplomaLookupRecord[]>(() => {
+        const storedLookups = localStorage.getItem('diplomaLookupRecords');
+        return storedLookups ? JSON.parse(storedLookups) : [];
+    });
+
+    // Diploma Book Management
+    const addDiplomaBook = (book: DiplomaBook) => {
+        const updatedBooks = [...diplomaBooks, book];
+        setDiplomaBooks(updatedBooks);
+        localStorage.setItem('diplomaBooks', JSON.stringify(updatedBooks));
+    };
+
+    const updateDiplomaBook = (updatedBook: DiplomaBook) => {
+        const updatedBooks = diplomaBooks.map(book => 
+            book.id === updatedBook.id ? updatedBook : book
+        );
+        setDiplomaBooks(updatedBooks);
+        localStorage.setItem('diplomaBooks', JSON.stringify(updatedBooks));
+    };
+
+    // Graduation Decision Management
+    const addGraduationDecision = (decision: GraduationDecision) => {
+        const updatedDecisions = [...graduationDecisions, decision];
+        setGraduationDecisions(updatedDecisions);
+        localStorage.setItem('graduationDecisions', JSON.stringify(updatedDecisions));
+    };
+
+    const incrementDecisionLookup = (decisionId: string) => {
+        const updatedDecisions = graduationDecisions.map(decision => 
+            decision.id === decisionId 
+                ? { ...decision, totalLookups: (decision.totalLookups || 0) + 1 }
+                : decision
+        );
+        setGraduationDecisions(updatedDecisions);
+        localStorage.setItem('graduationDecisions', JSON.stringify(updatedDecisions));
+    };
+
+    // Diploma Field Template Management
+    const addDiplomaFieldTemplate = (template: DiplomaFieldTemplate) => {
+        const updatedTemplates = [...diplomaFieldTemplates, template];
+        setDiplomaFieldTemplates(updatedTemplates);
+        localStorage.setItem('diplomaFieldTemplates', JSON.stringify(updatedTemplates));
+    };
+
+    const updateDiplomaFieldTemplate = (updatedTemplate: DiplomaFieldTemplate) => {
+        const updatedTemplates = diplomaFieldTemplates.map(template => 
+            template.id === updatedTemplate.id ? updatedTemplate : template
+        );
+        setDiplomaFieldTemplates(updatedTemplates);
+        localStorage.setItem('diplomaFieldTemplates', JSON.stringify(updatedTemplates));
+    };
+
+    // Diploma Information Management
+    const addDiplomaInformation = (diplomaInfo: DiplomaInformation) => {
+        // Ensure unique book entry number within the diploma book
+        const book = diplomaBooks.find(b => b.id === diplomaInfo.diplomaBookId);
+        if (book) {
+            const nextEntryNumber = book.currentEntryNumber + 1;
+            book.currentEntryNumber = nextEntryNumber;
+            updateDiplomaBook(book);
+
+            const updatedDiplomas = [...diplomaInformations, {
+                ...diplomaInfo,
+                bookEntryNumber: nextEntryNumber
+            }];
+            setDiplomaInformations(updatedDiplomas);
+            localStorage.setItem('diplomaInformations', JSON.stringify(updatedDiplomas));
+        }
+    };
+
+    // Diploma Lookup
+    const searchDiplomas = (
+        diplomaSerialNumber?: string, 
+        bookEntryNumber?: number, 
+        studentId?: string, 
+        fullName?: string, 
+        dateOfBirth?: string
+    ) => {
+        // Validation: At least two parameters must be provided
+        const providedParams = [
+            diplomaSerialNumber, 
+            bookEntryNumber, 
+            studentId, 
+            fullName, 
+            dateOfBirth
+        ].filter(param => param !== undefined && param !== null);
+
+        if (providedParams.length < 2) {
+            throw new Error('Please provide at least two search parameters');
+        }
+
+        return diplomaInformations.filter(diploma => 
+            (!diplomaSerialNumber || diploma.diplomaSerialNumber === diplomaSerialNumber) &&
+            (!bookEntryNumber || diploma.bookEntryNumber === bookEntryNumber) &&
+            (!studentId || diploma.studentId === studentId) &&
+            (!fullName || diploma.fullName.toLowerCase().includes(fullName.toLowerCase())) &&
+            (!dateOfBirth || diploma.dateOfBirth === dateOfBirth)
+        );
+    };
+
+    // Record Diploma Lookup
+    const recordDiplomaLookup = (diplomaId: string, source: string) => {
+        const diplomaToLookup = diplomaInformations.find(d => d.id === diplomaId);
+        if (diplomaToLookup) {
+            // Create lookup record
+            const lookupRecord: DiplomaLookupRecord = {
+                id: `LOOKUP_${Date.now()}`,
+                diplomaId,
+                lookupDate: new Date().toISOString(),
+                lookupSource: source
+            };
+
+            // Add lookup record
+            const updatedLookups = [...diplomaLookupRecords, lookupRecord];
+            setDiplomaLookupRecords(updatedLookups);
+            localStorage.setItem('diplomaLookupRecords', JSON.stringify(updatedLookups));
+
+            // Increment lookup count for associated graduation decision
+            incrementDecisionLookup(diplomaToLookup.decisionId);
+        }
+    };
+
+    return {
+        // Expose all state and methods
+        diplomaBooks,
+        graduationDecisions,
+        diplomaFieldTemplates,
+        diplomaInformations,
+        diplomaLookupRecords,
+        
+        // Diploma Book Methods
+        addDiplomaBook,
+        updateDiplomaBook,
+        
+        // Graduation Decision Methods
+        addGraduationDecision,
+        
+        // Diploma Field Template Methods
+        addDiplomaFieldTemplate,
+        updateDiplomaFieldTemplate,
+        
+        // Diploma Information Methods
+        addDiplomaInformation,
+        
+        // Lookup Methods
+        searchDiplomas,
+        recordDiplomaLookup
+    };
 };
-
-export default function useDiplomaModel() {
-  // State with localStorage initialization
-  const [diplomaBooks, setDiplomaBooks] = useState<DiplomaBook[]>(() => 
-    LocalStorageUtils.getItem(STORAGE_KEYS.DIPLOMA_BOOKS, [])
-  );
-  
-  const [graduationDecisions, setGraduationDecisions] = useState<GraduationDecision[]>(() => 
-    LocalStorageUtils.getItem(STORAGE_KEYS.GRADUATION_DECISIONS, [])
-  );
-  
-  const [diplomaInfos, setDiplomaInfos] = useState<DiplomaInfo[]>(() => 
-    LocalStorageUtils.getItem(STORAGE_KEYS.DIPLOMA_INFOS, [])
-  );
-  
-  const [diplomaFields, setDiplomaFields] = useState<DiplomaField[]>(() => 
-    LocalStorageUtils.getItem(STORAGE_KEYS.DIPLOMA_FIELDS, [])
-  );
-  
-  const [diplomaLookupLogs, setDiplomaLookupLogs] = useState<DiplomaLookupLog[]>(() => 
-    LocalStorageUtils.getItem(STORAGE_KEYS.DIPLOMA_LOOKUP_LOGS, [])
-  );
-
-  // Update localStorage whenever state changes
-  useEffect(() => {
-    LocalStorageUtils.setItem(STORAGE_KEYS.DIPLOMA_BOOKS, diplomaBooks);
-  }, [diplomaBooks]);
-
-  useEffect(() => {
-    LocalStorageUtils.setItem(STORAGE_KEYS.GRADUATION_DECISIONS, graduationDecisions);
-  }, [graduationDecisions]);
-
-  useEffect(() => {
-    LocalStorageUtils.setItem(STORAGE_KEYS.DIPLOMA_INFOS, diplomaInfos);
-  }, [diplomaInfos]);
-
-  useEffect(() => {
-    LocalStorageUtils.setItem(STORAGE_KEYS.DIPLOMA_FIELDS, diplomaFields);
-  }, [diplomaFields]);
-
-  useEffect(() => {
-    LocalStorageUtils.setItem(STORAGE_KEYS.DIPLOMA_LOOKUP_LOGS, diplomaLookupLogs);
-  }, [diplomaLookupLogs]);
-
-  // Generate unique ID
-  const generateUniqueId = (items: any[]) => {
-    return items.length > 0 ? Math.max(...items.map(item => item.id || 0)) + 1 : 1;
-  };
-
-  // Function to get or create diploma book for current year
-  const getCurrentOrCreateDiplomaBook = () => {
-    const currentYear = new Date().getFullYear();
-    let book = diplomaBooks.find(b => b.year === currentYear);
-    
-    if (!book) {
-      // Create new diploma book for current year
-      book = {
-        id: generateUniqueId(diplomaBooks),
-        year: currentYear,
-        current_entry_num: 1,
-        created_at: new Date(),
-        updated_at: new Date()
-      };
-      
-      // Update state and localStorage
-      const updatedBooks = [...diplomaBooks, book];
-      setDiplomaBooks(updatedBooks);
-      LocalStorageUtils.setItem(STORAGE_KEYS.DIPLOMA_BOOKS, updatedBooks);
-    }
-    
-    return book;
-  };
-
-  // Function to add new graduation decision
-  const addGraduationDecision = (decision: GraduationDecision) => {
-    decision.id = generateUniqueId(graduationDecisions);
-    decision.created_at = new Date();
-    
-    const updatedDecisions = [...graduationDecisions, decision];
-    setGraduationDecisions(updatedDecisions);
-    return decision;
-  };
-
-  // Function to add diploma info
-  const addDiplomaInfo = (diplomaInfo: DiplomaInfo) => {
-    // Get or create current year's diploma book
-    const book = getCurrentOrCreateDiplomaBook();
-    
-    // Set entry number and book ID
-    diplomaInfo.id = generateUniqueId(diplomaInfos);
-    diplomaInfo.entry_number = book.current_entry_num;
-    diplomaInfo.diploma_book_id = book.id!;
-    diplomaInfo.created_at = new Date();
-
-    // Update book's entry number
-    const updatedBooks = diplomaBooks.map(b => 
-      b.id === book.id 
-        ? {...b, current_entry_num: b.current_entry_num + 1, updated_at: new Date()} 
-        : b
-    );
-    setDiplomaBooks(updatedBooks);
-
-    // Update diploma infos
-    const updatedDiplomaInfos = [...diplomaInfos, diplomaInfo];
-    setDiplomaInfos(updatedDiplomaInfos);
-
-    return diplomaInfo;
-  };
-
-  // Function to update diploma info
-  const updateDiplomaInfo = (updatedDiploma: DiplomaInfo) => {
-    const updatedDiplomaInfos = diplomaInfos.map(diploma => 
-      diploma.id === updatedDiploma.id ? updatedDiploma : diploma
-    );
-    setDiplomaInfos(updatedDiplomaInfos);
-    return updatedDiploma;
-  };
-
-  // Function to delete diploma info
-  const deleteDiplomaInfo = (diplomaId: number) => {
-    const updatedDiplomaInfos = diplomaInfos.filter(diploma => diploma.id !== diplomaId);
-    setDiplomaInfos(updatedDiplomaInfos);
-  };
-
-  // Function to add/configure diploma fields
-  const configureFields = (fields: DiplomaField[]) => {
-    // Add unique IDs to new fields
-    const configuredFields = fields.map(field => ({
-      ...field,
-      id: generateUniqueId(diplomaFields)
-    }));
-    
-    setDiplomaFields(configuredFields);
-    return configuredFields;
-  };
-
-  // Function to log diploma lookups
-  const logDiplomaLookup = (graduationDecisionId: number) => {
-    const existingLog = diplomaLookupLogs.find(
-      log => log.graduation_decision_id === graduationDecisionId
-    );
-
-    let updatedLogs;
-    if (existingLog) {
-      // Increment existing log
-      updatedLogs = diplomaLookupLogs.map(log => 
-        log.graduation_decision_id === graduationDecisionId
-          ? {...log, lookup_count: log.lookup_count + 1, lookup_date: new Date()}
-          : log
-      );
-    } else {
-      // Create new log
-      const newLog: DiplomaLookupLog = {
-        id: generateUniqueId(diplomaLookupLogs),
-        graduation_decision_id: graduationDecisionId,
-        lookup_count: 1,
-        lookup_date: new Date()
-      };
-      updatedLogs = [...diplomaLookupLogs, newLog];
-    }
-
-    setDiplomaLookupLogs(updatedLogs);
-    return updatedLogs;
-  };
-
-  // Search function for diplomas
-  const searchDiplomas = (params: Partial<DiplomaInfo>) => {
-    return diplomaInfos.filter(diploma => {
-      let matchCount = 0;
-      
-      if (params.diploma_serial && diploma.diploma_serial === params.diploma_serial) matchCount++;
-      if (params.entry_number && diploma.entry_number === params.entry_number) matchCount++;
-      if (params.student_id && diploma.student_id === params.student_id) matchCount++;
-      if (params.full_name && diploma.full_name.toLowerCase().includes(params.full_name.toLowerCase())) matchCount++;
-      if (params.date_of_birth && 
-          new Date(diploma.date_of_birth).toDateString() === new Date(params.date_of_birth).toDateString()) 
-        matchCount++;
-
-      return matchCount >= 2;
-    });
-  };
-
-  // Clear all data (for testing/reset)
-  const clearAllData = () => {
-    Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key);
-    });
-    
-    setDiplomaBooks([]);
-    setGraduationDecisions([]);
-    setDiplomaInfos([]);
-    setDiplomaFields([]);
-    setDiplomaLookupLogs([]);
-  };
-
-  return {
-    diplomaBooks,
-    graduationDecisions,
-    diplomaInfos,
-    diplomaFields,
-    diplomaLookupLogs,
-    actions: {
-      getCurrentOrCreateDiplomaBook,
-      addGraduationDecision,
-      addDiplomaInfo,
-      updateDiplomaInfo,
-      deleteDiplomaInfo,
-      configureFields,
-      searchDiplomas,
-      logDiplomaLookup,
-      clearAllData
-    }
-  };
-}

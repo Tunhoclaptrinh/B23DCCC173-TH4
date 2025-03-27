@@ -123,14 +123,35 @@ export default [
 	{
 		path: "/diploma-management",
 		name: "DipomaManagement",
-		component: "./DiplomaManagement/App",
+		// component: "./DiplomaManagement/App",
 		icon: "QuestionCircleOutlined",
 		"routes": [
 			{
-				"path": "/diploma-management/dash-board",
-				"name": "Dash Board",
+				"path": "/diploma-management/diplomabook-management/",
+				"name": "Diploma Book",
 				component: "./DiplomaManagement/App",
 				
+			},
+			{
+				"path": "/diploma-management/diploma-graduation-decision",
+				"name": "Graduation Decision",
+				component: "./DiplomaManagement/GraduationDecisionManagement",
+				
+			},
+			{
+				"path": "/diploma-management/diploma-information-management",
+				"name": "Field Template",
+				component: "./DiplomaManagement/DiplomaFieldTemplateManagement",
+			},
+			{
+				"path": "/diploma-management/diploma-lookup",
+				"name": "Diploma Lookup",
+				component: "./DiplomaManagement/DiplomaLookup",
+			},
+			{
+				"path": "/diploma-management/diploma-information",
+				"name": "Diploma Information",
+				component: "./DiplomaManagement/DiplomaInformationManagement",
 			},
 		]
 	},
