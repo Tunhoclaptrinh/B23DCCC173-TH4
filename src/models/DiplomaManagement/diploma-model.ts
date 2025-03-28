@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-// Existing Interfaces (kept from original code)
+// Enhanced interfaces with better type safety
 export interface DiplomaBook {
     id: string; 
     year: number;
@@ -15,7 +15,7 @@ export interface GraduationDecision {
     decisionNumber: string;
     issuanceDate: string;
     summary: string;
-    diplomaBookId: string; // Foreign key to DiplomaBook
+    diplomaBookId: string;
     totalLookups: number;
 }
 
@@ -25,18 +25,25 @@ export interface DiplomaFieldTemplate {
     dataType: 'String' | 'Number' | 'Date';
     isRequired: boolean;
     defaultValue?: string | number | Date;
+    validation?: {
+        minLength?: number;
+        maxLength?: number;
+        min?: number;
+        max?: number;
+        pattern?: string;
+    };
 }
 
 export interface DiplomaInformation {
     id: string;
     diplomaBookId: string;
     decisionId: string;
-    bookEntryNumber: number; // Auto-incremented for each book
+    bookEntryNumber: number;
     diplomaSerialNumber: string;
     studentId: string;
     fullName: string;
     dateOfBirth: string;
-    additionalFields: Record<string, string | number | Date>;
+    additionalFields: Record<string, string | number | Date | undefined>;
 }
 
 export interface DiplomaLookupRecord {
@@ -47,7 +54,7 @@ export interface DiplomaLookupRecord {
 }
 
 export default () => {
-    // State management for diploma-related entities (kept from original code)
+    // State management for diploma-related entities
     const [diplomaBooks, setDiplomaBooks] = useState<DiplomaBook[]>(() => {
         const storedBooks = localStorage.getItem('diplomaBooks');
         return storedBooks ? JSON.parse(storedBooks) : [];
@@ -73,8 +80,137 @@ export default () => {
         return storedLookups ? JSON.parse(storedLookups) : [];
     });
 
-    // Existing methods from original code (kept intact)
+    // Enhanced field validation method
+    const validateAdditionalFields = (
+        additionalFields: Record<string, string | number | Date | undefined>, 
+        templates: DiplomaFieldTemplate[]
+    ): { isValid: boolean; errors: Record<string, string> } => {
+        const errors: Record<string, string> = {};
+
+        templates.forEach(template => {
+            const value = additionalFields[template.name];
+            
+            // Check if required field is missing
+            if (template.isRequired && (value === undefined || value === null || value === '')) {
+                errors[template.name] = `${template.name} is required`;
+            }
+
+            // Type-specific validations
+            if (value !== undefined && value !== null) {
+                switch (template.dataType) {
+                    case 'String':
+                        const stringValue = String(value);
+                        if (template.validation?.minLength && stringValue.length < template.validation.minLength) {
+                            errors[template.name] = `${template.name} must be at least ${template.validation.minLength} characters`;
+                        }
+                        if (template.validation?.maxLength && stringValue.length > template.validation.maxLength) {
+                            errors[template.name] = `${template.name} must be no more than ${template.validation.maxLength} characters`;
+                        }
+                        if (template.validation?.pattern) {
+                            const regex = new RegExp(template.validation.pattern);
+                            if (!regex.test(stringValue)) {
+                                errors[template.name] = `${template.name} does not match the required pattern`;
+                            }
+                        }
+                        break;
+                    
+                    case 'Number':
+                        const numberValue = Number(value);
+                        if (isNaN(numberValue)) {
+                            errors[template.name] = `${template.name} must be a valid number`;
+                        }
+                        if (template.validation?.min !== undefined && numberValue < template.validation.min) {
+                            errors[template.name] = `${template.name} must be at least ${template.validation.min}`;
+                        }
+                        if (template.validation?.max !== undefined && numberValue > template.validation.max) {
+                            errors[template.name] = `${template.name} must be no more than ${template.validation.max}`;
+                        }
+                        break;
+                    
+                    case 'Date':
+                        const dateValue = new Date(String(value));
+                        if (isNaN(dateValue.getTime())) {
+                            errors[template.name] = `${template.name} must be a valid date`;
+                        }
+                        break;
+                }
+            }
+        });
+
+        return {
+            isValid: Object.keys(errors).length === 0,
+            errors
+        };
+    };
+
+    // Modify addDiplomaInformation to handle additionalFields correctly
+    const addDiplomaInformation = (diplomaInfo: DiplomaInformation) => {
+        // Validate additional fields against templates
+        const validationResult = validateAdditionalFields(
+            diplomaInfo.additionalFields, 
+            diplomaFieldTemplates
+        );
+
+        if (!validationResult.isValid) {
+            throw new Error(
+                'Invalid additional fields: ' + 
+                JSON.stringify(validationResult.errors, null, 2)
+            );
+        }
+
+        const book = diplomaBooks.find(b => b.id === diplomaInfo.diplomaBookId);
+        if (book) {
+            const nextEntryNumber = book.currentEntryNumber + 1;
+            book.currentEntryNumber = nextEntryNumber;
+            updateDiplomaBook(book);
+
+            const updatedDiplomas = [...diplomaInformations, {
+                ...diplomaInfo,
+                bookEntryNumber: nextEntryNumber,
+                // Ensure additionalFields is correctly handled
+                additionalFields: diplomaInfo.additionalFields || {}
+            }];
+            setDiplomaInformations(updatedDiplomas);
+            localStorage.setItem('diplomaInformations', JSON.stringify(updatedDiplomas));
+        }
+    };
+
+    // Modify updateDiplomaInformation to handle additionalFields correctly
+    const updateDiplomaInformation = (updatedDiplomaInfo: DiplomaInformation) => {
+        // Validate additional fields against templates
+        const validationResult = validateAdditionalFields(
+            updatedDiplomaInfo.additionalFields, 
+            diplomaFieldTemplates
+        );
+
+        if (!validationResult.isValid) {
+            throw new Error(
+                'Invalid additional fields: ' + 
+                JSON.stringify(validationResult.errors, null, 2)
+            );
+        }
+
+        const updatedDiplomas = diplomaInformations.map(diploma => 
+            diploma.id === updatedDiplomaInfo.id 
+                ? {
+                    ...updatedDiplomaInfo,
+                    // Ensure additionalFields is correctly handled
+                    additionalFields: updatedDiplomaInfo.additionalFields || {}
+                } 
+                : diploma
+        );
+        setDiplomaInformations(updatedDiplomas);
+        localStorage.setItem('diplomaInformations', JSON.stringify(updatedDiplomas));
+    };
+
+
     const addDiplomaBook = (book: DiplomaBook) => {
+        const existingBookForYear = diplomaBooks.find(b => b.year === book.year);
+        
+        if (existingBookForYear) {
+            throw new Error(`A diploma book already exists for the year ${book.year}. Only one book is allowed per year.`);
+        }
+    
         const updatedBooks = [...diplomaBooks, book];
         setDiplomaBooks(updatedBooks);
         localStorage.setItem('diplomaBooks', JSON.stringify(updatedBooks));
@@ -94,17 +230,11 @@ export default () => {
         localStorage.setItem('graduationDecisions', JSON.stringify(updatedDecisions));
     };
 
-    const incrementDecisionLookup = (decisionId: string) => {
-        const updatedDecisions = graduationDecisions.map(decision => 
-            decision.id === decisionId 
-                ? { ...decision, totalLookups: (decision.totalLookups || 0) + 1 }
-                : decision
-        );
-        setGraduationDecisions(updatedDecisions);
-        localStorage.setItem('graduationDecisions', JSON.stringify(updatedDecisions));
-    };
-
     const addDiplomaFieldTemplate = (template: DiplomaFieldTemplate) => {
+        if (!template.name.trim()) {
+            throw new Error('Template name cannot be empty');
+        }
+
         const updatedTemplates = [...diplomaFieldTemplates, template];
         setDiplomaFieldTemplates(updatedTemplates);
         localStorage.setItem('diplomaFieldTemplates', JSON.stringify(updatedTemplates));
@@ -116,22 +246,6 @@ export default () => {
         );
         setDiplomaFieldTemplates(updatedTemplates);
         localStorage.setItem('diplomaFieldTemplates', JSON.stringify(updatedTemplates));
-    };
-
-    const addDiplomaInformation = (diplomaInfo: DiplomaInformation) => {
-        const book = diplomaBooks.find(b => b.id === diplomaInfo.diplomaBookId);
-        if (book) {
-            const nextEntryNumber = book.currentEntryNumber + 1;
-            book.currentEntryNumber = nextEntryNumber;
-            updateDiplomaBook(book);
-
-            const updatedDiplomas = [...diplomaInformations, {
-                ...diplomaInfo,
-                bookEntryNumber: nextEntryNumber
-            }];
-            setDiplomaInformations(updatedDiplomas);
-            localStorage.setItem('diplomaInformations', JSON.stringify(updatedDiplomas));
-        }
     };
 
     const searchDiplomas = (
@@ -162,25 +276,6 @@ export default () => {
         );
     };
 
-    const recordDiplomaLookup = (diplomaId: string, source: string) => {
-        const diplomaToLookup = diplomaInformations.find(d => d.id === diplomaId);
-        if (diplomaToLookup) {
-            const lookupRecord: DiplomaLookupRecord = {
-                id: `LOOKUP_${Date.now()}`,
-                diplomaId,
-                lookupDate: new Date().toISOString(),
-                lookupSource: source
-            };
-
-            const updatedLookups = [...diplomaLookupRecords, lookupRecord];
-            setDiplomaLookupRecords(updatedLookups);
-            localStorage.setItem('diplomaLookupRecords', JSON.stringify(updatedLookups));
-
-            incrementDecisionLookup(diplomaToLookup.decisionId);
-        }
-    };
-
-    // New Methods for Enhanced Functionality
 
     // Delete Methods
     const deleteDiplomaBook = (bookId: string) => {
@@ -295,6 +390,38 @@ export default () => {
     };
 
 
+
+    // New method to increment lookup count for a graduation decision
+    const incrementDecisionLookup = (decisionId: string) => {
+        const updatedDecisions = graduationDecisions.map(decision => 
+            decision.id === decisionId 
+                ? { ...decision, totalLookups: (decision.totalLookups || 0) + 1 } 
+                : decision
+        );
+        
+        setGraduationDecisions(updatedDecisions);
+        localStorage.setItem('graduationDecisions', JSON.stringify(updatedDecisions));
+    };
+
+    const recordDiplomaLookup = (diplomaId: string, source: string) => {
+        const diplomaToLookup = diplomaInformations.find(d => d.id === diplomaId);
+        if (diplomaToLookup) {
+            const lookupRecord: DiplomaLookupRecord = {
+                id: `LOOKUP_${Date.now()}`,
+                diplomaId,
+                lookupDate: new Date().toISOString(),
+                lookupSource: source
+            };
+
+            const updatedLookups = [...diplomaLookupRecords, lookupRecord];
+            setDiplomaLookupRecords(updatedLookups);
+            localStorage.setItem('diplomaLookupRecords', JSON.stringify(updatedLookups));
+
+            // Increment lookup count for the associated graduation decision
+            incrementDecisionLookup(diplomaToLookup.decisionId);
+        }
+    };
+
     return {
         // Existing exports
         diplomaBooks,
@@ -302,6 +429,7 @@ export default () => {
         diplomaFieldTemplates,
         diplomaInformations,
         diplomaLookupRecords,
+
         
         // Existing methods
         addDiplomaBook,
@@ -312,6 +440,7 @@ export default () => {
         addDiplomaInformation,
         searchDiplomas,
         recordDiplomaLookup,
+        updateDiplomaInformation,
 
         // get methods for new features
         getDiplomasByBookId,
@@ -331,6 +460,12 @@ export default () => {
         bulkImportDiplomas,
         bulkImportGraduationDecisions,
         exportDiplomaData,
-        importDiplomaData
+        importDiplomaData,
+
+        // Add the new method to the exports
+        incrementDecisionLookup,
+
+
     };
+    
 };

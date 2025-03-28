@@ -129,13 +129,8 @@ export default [
 			{
 				"path": "/diploma-management/diplomabook-management/",
 				"name": "Diploma Book",
-				component: "./DiplomaManagement/App",
+				component: "./DiplomaManagement/DiplomaBook",
 				
-			},
-			{
-				"path": "/diploma-management/diploma-information",
-				"name": "Diploma Information",
-				component: "./DiplomaManagement/DiplomaInformationManagement",
 			},
 			{
 				"path": "/diploma-management/diploma-graduation-decision",
@@ -143,6 +138,12 @@ export default [
 				component: "./DiplomaManagement/GraduationDecisionManagement",
 				
 			},
+			{
+				"path": "/diploma-management/diploma-information",
+				"name": "Diploma Information",
+				component: "./DiplomaManagement/DiplomaInformationManagement",
+			},
+			
 			{
 				"path": "/diploma-management/diploma-information-management",
 				"name": "Field Template",

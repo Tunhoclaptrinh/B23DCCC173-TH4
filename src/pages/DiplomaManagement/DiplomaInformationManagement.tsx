@@ -1,139 +1,63 @@
-import React, { useState, useMemo } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, Popconfirm, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Table, Button, Modal, message } from 'antd';
 import { useModel } from 'umi';
-import { v4 as uuidv4 } from 'uuid';
-import moment from 'moment';
-
-const { Option } = Select;
+import AddEditDiplomaModal from '@/components/Diploma/Information/AddandEditDiploma';
+import SearchDiplomaModal from '@/components/Diploma/Information/SearchDiplomaModal';
+import DiplomaDetailsModal from '@/components/Diploma/DiplomaDetailsModal';
 
 const DiplomaInformationManagement: React.FC = () => {
     const { 
         diplomaInformations, 
-        addDiplomaInformation, 
+        addDiplomaInformation,
+        updateDiplomaInformation,
         deleteDiplomaInformation,
-        searchDiplomas,
-        advancedDiplomaSearch,
         exportDiplomaData,
         importDiplomaData,
-        diplomaBooks, 
-        graduationDecisions, 
-        diplomaFieldTemplates,
-        getGraduationDecisionsByBookId // Add this new method
+        diplomaBooks,
+        advancedDiplomaSearch
     } = useModel('DiplomaManagement.diploma-model');
     
-    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isAddEditModalVisible, setIsAddEditModalVisible] = useState(false);
     const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
-    const [searchForm] = Form.useForm();
-    const [form] = Form.useForm();
-    const [tableData, setTableData] = useState(diplomaInformations);
-    const [filteredDecisions, setFilteredDecisions] = useState(graduationDecisions);
-
-    // Dynamically generate form items based on field templates
-    const DynamicFormFields = useMemo(() => {
-        return diplomaFieldTemplates.map(template => {
-            let formItem;
-            switch(template.dataType) {
-                case 'Date':
-                    formItem = (
-                        <Form.Item
-                            key={template.id}
-                            name={`additionalFields.${template.name}`}
-                            label={template.name}
-                            rules={[{ required: template.isRequired }]}
-                        >
-                            <DatePicker style={{ width: '100%' }} />
-                        </Form.Item>
-                    );
-                    break;
-                case 'Number':
-                    formItem = (
-                        <Form.Item
-                            key={template.id}
-                            name={`additionalFields.${template.name}`}
-                            label={template.name}
-                            rules={[{ required: template.isRequired, type: 'number' }]}
-                        >
-                            <Input type="number" />
-                        </Form.Item>
-                    );
-                    break;
-                default:
-                    formItem = (
-                        <Form.Item
-                            key={template.id}
-                            name={`additionalFields.${template.name}`}
-                            label={template.name}
-                            rules={[{ required: template.isRequired }]}
-                        >
-                            <Input />
-                        </Form.Item>
-                    );
-            }
-            return formItem;
-        });
-    }, [diplomaFieldTemplates]);
+    const [selectedDiplomaDetails, setSelectedDiplomaDetails] = useState<any>(null);
+    const [editingDiploma, setEditingDiploma] = useState<any>(null);
     
+    const [tableData, setTableData] = useState([]);
 
-    // Update the method to filter graduation decisions when a book is selected
-    const handleDiplomaBookChange = (bookId: string) => {
-        const decisions = bookId 
-            ? getGraduationDecisionsByBookId(bookId)
-            : graduationDecisions;
-        setFilteredDecisions(decisions);
-        
-        // Reset decision field when book changes
-        form.setFieldsValue({ decisionId: undefined });
+    useEffect(() => {
+        setTableData(diplomaInformations);
+    }, [diplomaInformations]);
+
+    const handleSaveDiplomaInformation = (diplomaInfoData: any) => {
+        if (editingDiploma) {
+            updateDiplomaInformation(diplomaInfoData);
+            message.success('Diploma Information Updated Successfully');
+        } else {
+            addDiplomaInformation(diplomaInfoData);
+            message.success('Diploma Information Added Successfully');
+        }
+
+        setIsAddEditModalVisible(false);
+        setEditingDiploma(null);
     };
 
-    // Handle add diploma information
-    const handleSaveDiplomaInformation = (values: any) => {
-        const diplomaInfoData = {
-            id: uuidv4(),
-            diplomaBookId: values.diplomaBookId,
-            decisionId: values.decisionId,
-            diplomaSerialNumber: values.diplomaSerialNumber,
-            studentId: values.studentId,
-            fullName: values.fullName,
-            dateOfBirth: values.dateOfBirth.format('YYYY-MM-DD'),
-            additionalFields: values.additionalFields || {}
-        };
-
-        addDiplomaInformation(diplomaInfoData);
-        message.success('Diploma Information Added Successfully');
-
-        setIsModalVisible(false);
-        form.resetFields();
+    const handleEdit = (diploma: any) => {
+        setEditingDiploma(diploma);
+        setIsAddEditModalVisible(true);
     };
 
-    // Handle delete diploma information
     const handleDelete = (diplomaId: string) => {
         deleteDiplomaInformation(diplomaId);
         message.success('Diploma Information Deleted Successfully');
-        setTableData(diplomaInformations);
     };
 
-    // Handle search
-    const handleSearch = (values: any) => {
-        const searchCriteria = {
-            diplomaSerialNumber: values.diplomaSerialNumber,
-            studentId: values.studentId,
-            fullName: values.fullName,
-            diplomaBookId: values.diplomaBookId,
-            decisionId: values.decisionId
-        };
-
-        // Remove undefined values
-        Object.keys(searchCriteria).forEach(key => 
-            searchCriteria[key] === undefined && delete searchCriteria[key]
-        );
-
+    const handleSearch = (searchCriteria: any) => {
         const results = advancedDiplomaSearch(searchCriteria);
         setTableData(results);
         setIsSearchModalVisible(false);
         message.success(`Found ${results.length} diploma(s)`);
     };
 
-    // Export diploma information
     const handleExport = () => {
         const data = exportDiplomaData();
         const dataStr = JSON.stringify(data, null, 2);
@@ -147,14 +71,12 @@ const DiplomaInformationManagement: React.FC = () => {
         message.success('Diploma Information Exported Successfully');
     };
 
-    // Import diploma information
     const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
         const fileReader = new FileReader();
         fileReader.onload = (e) => {
             try {
                 const jsonData = JSON.parse(e.target?.result as string);
                 importDiplomaData(jsonData);
-                setTableData(diplomaInformations);
                 message.success('Diploma Information Imported Successfully');
             } catch (error) {
                 message.error('Failed to import diploma information');
@@ -166,27 +88,13 @@ const DiplomaInformationManagement: React.FC = () => {
         }
     };
 
+    
+
     const columns = [
-        {
-            title: 'Diploma Serial Number',
-            dataIndex: 'diplomaSerialNumber',
-            key: 'diplomaSerialNumber',
-        },
-        {
-            title: 'Student ID',
-            dataIndex: 'studentId',
-            key: 'studentId',
-        },
-        {
-            title: 'Full Name',
-            dataIndex: 'fullName',
-            key: 'fullName',
-        },
-        {
-            title: 'Date of Birth',
-            dataIndex: 'dateOfBirth',
-            key: 'dateOfBirth',
-        },
+        { title: 'Diploma Serial Number', dataIndex: 'diplomaSerialNumber', key: 'diplomaSerialNumber' },
+        { title: 'Student ID', dataIndex: 'studentId', key: 'studentId' },
+        { title: 'Full Name', dataIndex: 'fullName', key: 'fullName' },
+        { title: 'Date of Birth', dataIndex: 'dateOfBirth', key: 'dateOfBirth' },
         {
             title: 'Diploma Book',
             dataIndex: 'diplomaBookId',
@@ -196,24 +104,17 @@ const DiplomaInformationManagement: React.FC = () => {
                 return book ? `${book.year} Book` : bookId;
             }
         },
+        { title: 'Book Entry Number', dataIndex: 'bookEntryNumber', key: 'bookEntryNumber' },
         {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (
-                <Popconfirm
-                    title="Are you sure you want to delete this diploma information?"
-                    onConfirm={() => handleDelete(record.id)}
-                    okText="Yes"
-                    cancelText="No"
-                >
-                    <Button type="link" danger>Delete</Button>
-                </Popconfirm>
+                <>
+                    <Button onClick={() => setSelectedDiplomaDetails(record)}>View Details</Button>
+                    <Button onClick={() => handleEdit(record)}>Edit</Button>
+                    <Button danger onClick={() => handleDelete(record.id)}>Delete</Button>
+                </>
             ),
-        },
-        {
-            title: 'bookEntryNumber',
-            dataIndex: 'bookEntryNumber', // Auto-incremented by DiplomaBook component
-            key: 'bookEntryNumber',
         },
     ];
 
@@ -223,26 +124,16 @@ const DiplomaInformationManagement: React.FC = () => {
                 <div>
                     <Button 
                         type="primary" 
-                        style={{ marginRight: 8 }} 
-                        onClick={() => {
-                            form.resetFields();
-                            setIsModalVisible(true);
-                        }}
+                        onClick={() => setIsAddEditModalVisible(true)}
                     >
                         Add Diploma Information
                     </Button>
                     <Button 
-                        type="default" 
-                        style={{ marginRight: 8 }} 
                         onClick={() => setIsSearchModalVisible(true)}
                     >
                         Search Diplomas
                     </Button>
-                    <Button 
-                        type="default" 
-                        style={{ marginRight: 8 }} 
-                        onClick={handleExport}
-                    >
+                    <Button onClick={handleExport}>
                         Export Data
                     </Button>
                     <input 
@@ -253,193 +144,45 @@ const DiplomaInformationManagement: React.FC = () => {
                         onChange={handleImport}
                     />
                     <label htmlFor="import-file">
-                        <Button type="default" component="span">
+                        <Button component="span">
                             Import Data
                         </Button>
                     </label>
                 </div>
             </div>
 
-            <Table 
-                columns={columns} 
-                dataSource={tableData} 
-                rowKey="id" 
-            />
 
-            {/* Add Diploma Information Modal */}
-            <Modal
-                title="Add New Diploma Information"
-                visible={isModalVisible}
-                footer={null}
-                width={800}
-                onCancel={() => setIsModalVisible(false)}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSaveDiplomaInformation}
-                >
-                    <Form.Item
-                        name="diplomaSerialNumber"
-                        label="Diploma Serial Number"
-                        rules={[{ required: true, message: 'Please input diploma serial number' }]}
-                    >
-                        <Input placeholder="Enter diploma serial number" />
-                    </Form.Item>
+            <Table columns={columns} dataSource={tableData} rowKey="id" />
 
-                    <Form.Item
-                        name="diplomaBookId"
-                        label="Diploma Book"
-                        rules={[{ required: true, message: 'Please select diploma book' }]}
-                    >
-                        <Select 
-                            placeholder="Select Diploma Book"
-                            onChange={(value) => handleDiplomaBookChange(value)}
-                        >
-                            {diplomaBooks.map(book => (
-                                <Option key={book.id} value={book.id}>
-                                    {book.year} Book
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+            {isAddEditModalVisible && (
+                <AddEditDiplomaModal
+                    visible={isAddEditModalVisible}
+                    onCancel={() => {
+                        setIsAddEditModalVisible(false);
+                        setEditingDiploma(null);
+                    }}
+                    onSave={handleSaveDiplomaInformation}
+                    editingDiploma={editingDiploma}
+                />
+            )}
 
-                    <Form.Item
-                        name="decisionId"
-                        label="Graduation Decision"
-                        rules={[{ required: true, message: 'Please select graduation decision' }]}
-                    >
-                        <Select 
-                            placeholder="Select Graduation Decision"
-                            disabled={!form.getFieldValue('diplomaBookId')}
-                        >
-                            {filteredDecisions.map(decision => (
-                                <Option key={decision.id} value={decision.id}>
-                                    {decision.decisionNumber} - {decision.issuanceDate}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+            {isSearchModalVisible && (
+                <SearchDiplomaModal
+                    visible={isSearchModalVisible}
+                    onCancel={() => setIsSearchModalVisible(false)}
+                    onSearch={handleSearch}
+                />
+            )}
 
-                    <Form.Item
-                        name="studentId"
-                        label="Student ID"
-                        rules={[{ required: true, message: 'Please input student ID' }]}
-                    >
-                        <Input placeholder="Enter student ID" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="fullName"
-                        label="Full Name"
-                        rules={[{ required: true, message: 'Please input full name' }]}
-                    >
-                        <Input placeholder="Enter full name" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="dateOfBirth"
-                        label="Date of Birth"
-                        rules={[{ required: true, message: 'Please select date of birth' }]}
-                    >
-                        <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-
-                    {/* Dynamic Additional Fields */}
-                    {DynamicFormFields}
-
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                            Add Diploma Information
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Search Diplomas Modal */}
-            <Modal
-                title="Search Diplomas"
-                visible={isSearchModalVisible}
-                footer={null}
-                width={600}
-                onCancel={() => setIsSearchModalVisible(false)}
-            >
-                <Form
-                    form={searchForm}
-                    layout="vertical"
-                    onFinish={handleSearch}
-                >
-                    <Form.Item
-                        name="diplomaSerialNumber"
-                        label="Diploma Serial Number"
-                    >
-                        <Input placeholder="Enter diploma serial number" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="diplomaBookId"
-                        label="Diploma Book"
-                    >
-                        <Select 
-                            placeholder="Select Diploma Book" 
-                            allowClear
-                            onChange={(value) => {
-                                const decisions = value 
-                                    ? getGraduationDecisionsByBookId(value)
-                                    : graduationDecisions;
-                                searchForm.setFieldsValue({ decisionId: undefined });
-                            }}
-                        >
-                            {diplomaBooks.map(book => (
-                                <Option key={book.id} value={book.id}>
-                                    {book.year} Book
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="decisionId"
-                        label="Graduation Decision"
-                    >
-                        <Select 
-                            placeholder="Select Graduation Decision" 
-                            allowClear
-                            disabled={!searchForm.getFieldValue('diplomaBookId')}
-                        >
-                            {filteredDecisions.map(decision => (
-                                <Option key={decision.id} value={decision.id}>
-                                    {decision.decisionNumber} - {decision.issuanceDate}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="studentId"
-                        label="Student ID"
-                    >
-                        <Input placeholder="Enter student ID" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="fullName"
-                        label="Full Name"
-                    >
-                        <Input placeholder="Enter full name" />
-                    </Form.Item>
-
-                    
-
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                            Search
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Modal>
+            {selectedDiplomaDetails && (
+                <DiplomaDetailsModal 
+                    diploma={selectedDiplomaDetails}
+                    onClose={() => setSelectedDiplomaDetails(null)}
+                />
+            )}
         </div>
     );
 };
 
 export default DiplomaInformationManagement;
+

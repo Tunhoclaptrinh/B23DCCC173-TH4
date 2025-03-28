@@ -1,161 +1,99 @@
 import React, { useState } from 'react';
-import { 
-    Form, 
-    Input, 
-    Button, 
-    Table, 
-    Card, 
-    DatePicker, 
-    Select,
-    Typography,
-    Descriptions
-} from 'antd';
+import { Card, Form, message } from 'antd';
 import { useModel } from 'umi';
-
-const { Title } = Typography;
-const { Option } = Select;
+import SearchForm from '@/components/Diploma/Lookup/SearchForm';
+import ResultsTable from '@/components/Diploma/Lookup/ResultsTable';
+import DiplomaDetailsLookup from '@/components/Diploma/DiplomaDetailsModal';
 
 const DiplomaLookup: React.FC = () => {
-    const { 
-        searchDiplomas, 
-        diplomaFieldTemplates, 
-        diplomaBooks, 
-        graduationDecisions,
-        recordDiplomaLookup 
-    } = useModel('DiplomaManagement.diploma-model');
-    
-    const [searchResults, setSearchResults] = useState([]);
-    const [selectedDiploma, setSelectedDiploma] = useState(null);
-    const [form] = Form.useForm();
+  const { 
+    searchDiplomas, 
+    diplomaBooks,
+    graduationDecisions,
+    diplomaFieldTemplates,
+    diplomaLookupRecords,
+    recordDiplomaLookup 
+  } = useModel('DiplomaManagement.diploma-model');
+  
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedDiploma, setSelectedDiploma] = useState<any>(null);
+  const [form] = Form.useForm();
 
-    const handleSearch = () => {
-        form.validateFields()
-            .then(values => {
-                const results = searchDiplomas(
-                    values.diplomaSerialNumber,
-                    values.bookEntryNumber ? parseInt(values.bookEntryNumber) : undefined,
-                    values.studentId,
-                    values.fullName,
-                    values.dateOfBirth?.format('YYYY-MM-DD')
-                );
-                setSearchResults(results);
-                setSelectedDiploma(null);
-            });
-    };
+  const handleSearch = () => {
+    form.validateFields()
+      .then(values => {
+        try {
+          const results = searchDiplomas(
+            values.diplomaSerialNumber,
+            values.bookEntryNumber ? parseInt(values.bookEntryNumber) : undefined,
+            values.studentId,
+            values.fullName,
+            values.dateOfBirth?.format('YYYY-MM-DD')
+          ).map(diploma => {
+            const diplomaLookups = diplomaLookupRecords.filter(
+              record => record.diplomaId === diploma.id
+            ).length;
 
-    const handleViewDetails = (diploma) => {
-        // Record lookup for the specific diploma
-        recordDiplomaLookup(diploma.id, 'Diploma Lookup Page');
-        setSelectedDiploma(diploma);
-    };
+            const graduationDecision = graduationDecisions.find(
+              decision => decision.id === diploma.decisionId
+            );
 
-    const columns = [
-        { 
-            title: 'Diploma Serial Number', 
-            dataIndex: 'diplomaSerialNumber', 
-            key: 'diplomaSerialNumber' 
-        },
-        { 
-            title: 'Book Entry Number', 
-            dataIndex: 'bookEntryNumber', 
-            key: 'bookEntryNumber' 
-        },
-        { 
-            title: 'Full Name', 
-            dataIndex: 'fullName', 
-            key: 'fullName' 
-        },
-        {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Button onClick={() => handleViewDetails(record)}>
-                    View Details
-                </Button>
-            )
+            return {
+              ...diploma,
+              diplomaLookups,
+              graduationDecisionLookups: graduationDecision?.totalLookups || 0
+            };
+          });
+          
+          if (results.length === 0) {
+            message.info('No diplomas found matching your search criteria.');
+          }
+          
+          setSearchResults(results);
+          setSelectedDiploma(null);
+        } catch (error) {
+          message.error(error.message);
         }
-    ];
+      })
+      .catch(errorInfo => {
+        message.error('Please fill in at least two search parameters');
+      });
+  };
 
-    const renderAdditionalFields = () => {
-        if (!selectedDiploma) return null;
-
-        return diplomaFieldTemplates.map(template => {
-            const value = selectedDiploma.additionalFields?.[template.name];
-            return value ? (
-                <Descriptions.Item key={template.id} label={template.name}>
-                    {value}
-                </Descriptions.Item>
-            ) : null;
-        }).filter(Boolean);
+  const handleViewDetails = (originalDiploma: any) => {
+    const diplomaBook = diplomaBooks.find(book => book.id === originalDiploma.diplomaBookId);
+    const graduationDecision = graduationDecisions.find(decision => decision.id === originalDiploma.decisionId);
+    
+    const enhancedDiploma = {
+      ...originalDiploma,
+      diplomaBook: diplomaBook || null,
+      graduationDecision: {
+        ...graduationDecision,
+        totalLookups: graduationDecision?.totalLookups || 0
+      },
+      diplomaFieldTemplates: diplomaFieldTemplates,
+      lookupRecords: diplomaLookupRecords.filter(record => record.diplomaId === originalDiploma.id)
     };
 
-    return (
-        <Card title="Diploma Lookup">
-            <Form form={form} layout="vertical">
-                <Form.Item name="diplomaSerialNumber" label="Diploma Serial Number">
-                    <Input placeholder="Enter diploma serial number" />
-                </Form.Item>
-                
-                <Form.Item name="bookEntryNumber" label="Book Entry Number">
-                    <Input type="number" placeholder="Enter book entry number" />
-                </Form.Item>
-                
-                <Form.Item name="studentId" label="Student ID">
-                    <Input placeholder="Enter student ID" />
-                </Form.Item>
-                
-                <Form.Item name="fullName" label="Full Name">
-                    <Input placeholder="Enter full name" />
-                </Form.Item>
-                
-                <Form.Item name="dateOfBirth" label="Date of Birth">
-                    <DatePicker style={{ width: '100%' }} />
-                </Form.Item>
-                
-                <Button type="primary" onClick={handleSearch}>
-                    Search Diplomas
-                </Button>
-            </Form>
+    recordDiplomaLookup(originalDiploma.id, 'Diploma Lookup Page');
+    setSelectedDiploma(enhancedDiploma);
+  };
 
-            <Table 
-                style={{ marginTop: 16 }}
-                columns={columns} 
-                dataSource={searchResults} 
-                rowKey="id"
-            />
-
-            {selectedDiploma && (
-                <Card style={{ marginTop: 16 }}>
-                    <Title level={4}>Diploma Details</Title>
-                    <Descriptions bordered>
-                        <Descriptions.Item label="Diploma Serial Number">
-                            {selectedDiploma.diplomaSerialNumber}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Student ID">
-                            {selectedDiploma.studentId}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Full Name">
-                            {selectedDiploma.fullName}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Date of Birth">
-                            {selectedDiploma.dateOfBirth}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Book Entry Number">
-                            {selectedDiploma.bookEntryNumber}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Diploma Book">
-                            {diplomaBooks.find(b => b.id === selectedDiploma.diplomaBookId)?.year} Book
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Graduation Decision">
-                            {graduationDecisions.find(d => d.id === selectedDiploma.decisionId)?.decisionNumber}
-                        </Descriptions.Item>
-                        
-                        {renderAdditionalFields()}
-                    </Descriptions>
-                </Card>
-            )}
-        </Card>
-    );
+  return (
+    <Card title="Diploma Lookup">
+      <SearchForm form={form} onSearch={handleSearch} />
+      <ResultsTable 
+        searchResults={searchResults} 
+        onViewDetails={handleViewDetails} 
+      />
+      {selectedDiploma && (
+        <DiplomaDetailsLookup
+          diploma={selectedDiploma} 
+          onClose={() => setSelectedDiploma(null)} 
+        />
+      )}
+    </Card>
+  );
 };
 
 export default DiplomaLookup;

@@ -22,7 +22,7 @@ const DiplomaBookManagement: React.FC = () => {
         getDiplomaStatistics,
         exportDiplomaData,
         importDiplomaData,
-        getDiplomasByBookId // Add this new method
+        getDiplomasByBookId
     } = useModel('DiplomaManagement.diploma-model');
 
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -31,15 +31,13 @@ const DiplomaBookManagement: React.FC = () => {
     const [editingBook, setEditingBook] = useState<any>(null);
     const [form] = Form.useForm();
 
-    // Updated handleViewDiplomas method
     const handleViewDiplomas = (book: any) => {
-        // Use the new getDiplomasByBookId method
         const diplomas = getDiplomasByBookId(book.id);
         setSelectedBookDiplomas(diplomas);
         setIsDiplomasModalVisible(true);
     };
 
-    // Handle add/edit diploma book
+    // Updated handleSaveBook method to handle potential errors
     const handleSaveBook = (values: any) => {
         const bookData = {
             id: editingBook ? editingBook.id : uuidv4(),
@@ -49,19 +47,30 @@ const DiplomaBookManagement: React.FC = () => {
             currentEntryNumber: editingBook ? editingBook.currentEntryNumber : 0
         };
 
-        if (editingBook) {
-            // Edit existing book
-            updateDiplomaBook(bookData);
-            message.success('Diploma Book Updated Successfully');
-        } else {
-            // Add new book
-            addDiplomaBook(bookData);
-            message.success('Diploma Book Added Successfully');
-        }
+        try {
+            if (editingBook) {
+                // Edit existing book
+                updateDiplomaBook(bookData);
+                message.success('Diploma Book Updated Successfully');
+            } else {
+                // Add new book
+                addDiplomaBook(bookData);
+                message.success('Diploma Book Added Successfully');
+            }
 
-        setIsModalVisible(false);
-        setEditingBook(null);
-        form.resetFields();
+            setIsModalVisible(false);
+            setEditingBook(null);
+            form.resetFields();
+        } catch (error) {
+            // Handle the specific error for duplicate year
+            if (error instanceof Error && error.message.includes('diploma book already exists')) {
+                message.error(error.message);
+            } else {
+                // Handle any other unexpected errors
+                message.error('Failed to save diploma book. Please try again.');
+                console.error(error);
+            }
+        }
     };
 
     // Handle edit
