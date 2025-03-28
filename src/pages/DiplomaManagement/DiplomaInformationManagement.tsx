@@ -17,7 +17,8 @@ const DiplomaInformationManagement: React.FC = () => {
         importDiplomaData,
         diplomaBooks, 
         graduationDecisions, 
-        diplomaFieldTemplates 
+        diplomaFieldTemplates,
+        getGraduationDecisionsByBookId // Add this new method
     } = useModel('DiplomaManagement.diploma-model');
     
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -25,6 +26,7 @@ const DiplomaInformationManagement: React.FC = () => {
     const [searchForm] = Form.useForm();
     const [form] = Form.useForm();
     const [tableData, setTableData] = useState(diplomaInformations);
+    const [filteredDecisions, setFilteredDecisions] = useState(graduationDecisions);
 
     // Dynamically generate form items based on field templates
     const DynamicFormFields = useMemo(() => {
@@ -70,6 +72,18 @@ const DiplomaInformationManagement: React.FC = () => {
             return formItem;
         });
     }, [diplomaFieldTemplates]);
+    
+
+    // Update the method to filter graduation decisions when a book is selected
+    const handleDiplomaBookChange = (bookId: string) => {
+        const decisions = bookId 
+            ? getGraduationDecisionsByBookId(bookId)
+            : graduationDecisions;
+        setFilteredDecisions(decisions);
+        
+        // Reset decision field when book changes
+        form.setFieldsValue({ decisionId: undefined });
+    };
 
     // Handle add diploma information
     const handleSaveDiplomaInformation = (values: any) => {
@@ -195,7 +209,12 @@ const DiplomaInformationManagement: React.FC = () => {
                     <Button type="link" danger>Delete</Button>
                 </Popconfirm>
             ),
-        }
+        },
+        {
+            title: 'bookEntryNumber',
+            dataIndex: 'bookEntryNumber', // Auto-incremented by DiplomaBook component
+            key: 'bookEntryNumber',
+        },
     ];
 
     return (
@@ -273,7 +292,10 @@ const DiplomaInformationManagement: React.FC = () => {
                         label="Diploma Book"
                         rules={[{ required: true, message: 'Please select diploma book' }]}
                     >
-                        <Select placeholder="Select Diploma Book">
+                        <Select 
+                            placeholder="Select Diploma Book"
+                            onChange={(value) => handleDiplomaBookChange(value)}
+                        >
                             {diplomaBooks.map(book => (
                                 <Option key={book.id} value={book.id}>
                                     {book.year} Book
@@ -287,8 +309,11 @@ const DiplomaInformationManagement: React.FC = () => {
                         label="Graduation Decision"
                         rules={[{ required: true, message: 'Please select graduation decision' }]}
                     >
-                        <Select placeholder="Select Graduation Decision">
-                            {graduationDecisions.map(decision => (
+                        <Select 
+                            placeholder="Select Graduation Decision"
+                            disabled={!form.getFieldValue('diplomaBookId')}
+                        >
+                            {filteredDecisions.map(decision => (
                                 <Option key={decision.id} value={decision.id}>
                                     {decision.decisionNumber} - {decision.issuanceDate}
                                 </Option>
@@ -355,10 +380,36 @@ const DiplomaInformationManagement: React.FC = () => {
                         name="diplomaBookId"
                         label="Diploma Book"
                     >
-                        <Select placeholder="Select Diploma Book" allowClear>
+                        <Select 
+                            placeholder="Select Diploma Book" 
+                            allowClear
+                            onChange={(value) => {
+                                const decisions = value 
+                                    ? getGraduationDecisionsByBookId(value)
+                                    : graduationDecisions;
+                                searchForm.setFieldsValue({ decisionId: undefined });
+                            }}
+                        >
                             {diplomaBooks.map(book => (
                                 <Option key={book.id} value={book.id}>
                                     {book.year} Book
+                                </Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="decisionId"
+                        label="Graduation Decision"
+                    >
+                        <Select 
+                            placeholder="Select Graduation Decision" 
+                            allowClear
+                            disabled={!searchForm.getFieldValue('diplomaBookId')}
+                        >
+                            {filteredDecisions.map(decision => (
+                                <Option key={decision.id} value={decision.id}>
+                                    {decision.decisionNumber} - {decision.issuanceDate}
                                 </Option>
                             ))}
                         </Select>
@@ -378,18 +429,7 @@ const DiplomaInformationManagement: React.FC = () => {
                         <Input placeholder="Enter full name" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="decisionId"
-                        label="Graduation Decision"
-                    >
-                        <Select placeholder="Select Graduation Decision" allowClear>
-                            {graduationDecisions.map(decision => (
-                                <Option key={decision.id} value={decision.id}>
-                                    {decision.decisionNumber} - {decision.issuanceDate}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+                    
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit">

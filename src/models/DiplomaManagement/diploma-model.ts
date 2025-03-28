@@ -31,7 +31,7 @@ export interface DiplomaInformation {
     id: string;
     diplomaBookId: string;
     decisionId: string;
-    bookEntryNumber: number;
+    bookEntryNumber: number; // Auto-incremented for each book
     diplomaSerialNumber: string;
     studentId: string;
     fullName: string;
@@ -280,6 +280,20 @@ export default () => {
         localStorage.setItem('diplomaInformations', JSON.stringify(data.diplomaInformations));
         localStorage.setItem('diplomaLookupRecords', JSON.stringify(data.diplomaLookupRecords));
     };
+    
+    // New method to get diplomas for a specific diploma book
+    const getDiplomasByBookId = (bookId: string) => {
+        return diplomaInformations.filter(diploma => 
+            diploma.diplomaBookId === bookId
+        );
+    };
+    // New method to get graduation decisions for a specific diploma book
+    const getGraduationDecisionsByBookId = (bookId: string) => {
+        return graduationDecisions.filter(decision => 
+            decision.diplomaBookId === bookId
+        );
+    };
+
 
     return {
         // Existing exports
@@ -298,6 +312,10 @@ export default () => {
         addDiplomaInformation,
         searchDiplomas,
         recordDiplomaLookup,
+
+        // get methods for new features
+        getDiplomasByBookId,
+        getGraduationDecisionsByBookId,
 
         // New delete methods
         deleteDiplomaBook,

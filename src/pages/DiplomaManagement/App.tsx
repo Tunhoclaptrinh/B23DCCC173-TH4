@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, DatePicker, Popconfirm, message } from 'antd';
+import { 
+    Table, 
+    Button, 
+    Modal, 
+    Form, 
+    Input, 
+    DatePicker, 
+    Popconfirm, 
+    message 
+} from 'antd';
 import { useModel } from 'umi';
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
@@ -12,13 +21,23 @@ const DiplomaBookManagement: React.FC = () => {
         deleteDiplomaBook,
         getDiplomaStatistics,
         exportDiplomaData,
-        importDiplomaData 
+        importDiplomaData,
+        getDiplomasByBookId // Add this new method
     } = useModel('DiplomaManagement.diploma-model');
 
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [isStatsModalVisible, setIsStatsModalVisible] = useState(false);
+    const [isDiplomasModalVisible, setIsDiplomasModalVisible] = useState(false);
+    const [selectedBookDiplomas, setSelectedBookDiplomas] = useState<any[]>([]);
     const [editingBook, setEditingBook] = useState<any>(null);
     const [form] = Form.useForm();
+
+    // Updated handleViewDiplomas method
+    const handleViewDiplomas = (book: any) => {
+        // Use the new getDiplomasByBookId method
+        const diplomas = getDiplomasByBookId(book.id);
+        setSelectedBookDiplomas(diplomas);
+        setIsDiplomasModalVisible(true);
+    };
 
     // Handle add/edit diploma book
     const handleSaveBook = (values: any) => {
@@ -137,6 +156,18 @@ const DiplomaBookManagement: React.FC = () => {
             key: 'currentEntryNumber',
         },
         {
+            title: 'Diplomas',
+            key: 'diplomas',
+            render: (_, record) => (
+                <Button 
+                    type="link" 
+                    onClick={() => handleViewDiplomas(record)}
+                >
+                    View Diplomas
+                </Button>
+            ),
+        },
+        {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (
@@ -154,6 +185,35 @@ const DiplomaBookManagement: React.FC = () => {
             ),
         }
     ];
+
+    const diplomasColumns = [
+        {
+            title: 'Diploma Serial Number',
+            dataIndex: 'diplomaSerialNumber',
+            key: 'diplomaSerialNumber',
+        },
+        {
+            title: 'Full Name',
+            dataIndex: 'fullName',
+            key: 'fullName',
+        },
+        {
+            title: 'Student ID',
+            dataIndex: 'studentId',
+            key: 'studentId',
+        },
+        {
+            title: 'Date of Birth',
+            dataIndex: 'dateOfBirth',
+            key: 'dateOfBirth',
+        },
+        {
+            title: 'Book Entry Number',
+            dataIndex: 'bookEntryNumber',
+            key: 'bookEntryNumber',
+        }
+    ];
+
 
     return (
         <div>
@@ -205,6 +265,25 @@ const DiplomaBookManagement: React.FC = () => {
                 rowKey="id" 
             />
 
+            {/* Diplomas Modal */}
+            <Modal
+                title="Diplomas in Book"
+                visible={isDiplomasModalVisible}
+                footer={null}
+                onCancel={() => setIsDiplomasModalVisible(false)}
+                width={800}
+            >
+                <Table 
+                    columns={diplomasColumns} 
+                    dataSource={selectedBookDiplomas} 
+                    rowKey="diplomaNumber"
+                    locale={{
+                        emptyText: 'No diplomas found in this book'
+                    }}
+                />
+            </Modal>
+
+            {/* Existing Modals for Add/Edit and other operations remain the same */}
             <Modal
                 title={editingBook ? "Edit Diploma Book" : "Add New Diploma Book"}
                 visible={isModalVisible}
