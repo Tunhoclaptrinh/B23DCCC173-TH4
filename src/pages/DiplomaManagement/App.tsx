@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, DatePicker, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, DatePicker, Popconfirm, message } from 'antd';
 import { useModel } from 'umi';
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
 
 const DiplomaBookManagement: React.FC = () => {
-    const { diplomaBooks, addDiplomaBook, updateDiplomaBook } = useModel('DiplomaManagement.diploma-model');
+    const { 
+        diplomaBooks, 
+        addDiplomaBook, 
+        updateDiplomaBook, 
+        deleteDiplomaBook,
+        getDiplomaStatistics,
+        exportDiplomaData,
+        importDiplomaData 
+    } = useModel('DiplomaManagement.diploma-model');
+
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isStatsModalVisible, setIsStatsModalVisible] = useState(false);
     const [editingBook, setEditingBook] = useState<any>(null);
     const [form] = Form.useForm();
 
@@ -23,9 +33,11 @@ const DiplomaBookManagement: React.FC = () => {
         if (editingBook) {
             // Edit existing book
             updateDiplomaBook(bookData);
+            message.success('Diploma Book Updated Successfully');
         } else {
             // Add new book
             addDiplomaBook(bookData);
+            message.success('Diploma Book Added Successfully');
         }
 
         setIsModalVisible(false);
@@ -42,6 +54,65 @@ const DiplomaBookManagement: React.FC = () => {
             endDate: moment(book.endDate)
         });
         setIsModalVisible(true);
+    };
+
+    // Handle delete
+    const handleDelete = (bookId: string) => {
+        deleteDiplomaBook(bookId);
+        message.success('Diploma Book Deleted Successfully');
+    };
+
+    // Show statistics
+    const showStatistics = () => {
+        const stats = getDiplomaStatistics();
+        Modal.info({
+            title: 'Diploma Management Statistics',
+            content: (
+                <div>
+                    <p>Total Diplomas: {stats.totalDiplomas}</p>
+                    <p>Total Books: {stats.totalBooks}</p>
+                    <p>Total Graduation Decisions: {stats.totalDecisions}</p>
+                    <p>Total Lookups: {stats.totalLookups}</p>
+                    <h4>Diplomas by Year:</h4>
+                    {Object.entries(stats.diplomasByYear).map(([year, count]) => (
+                        <p key={year}>{year}: {count} diplomas</p>
+                    ))}
+                </div>
+            ),
+            width: 520,
+        });
+    };
+
+    // Export diploma data
+    const handleExport = () => {
+        const data = exportDiplomaData();
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = 'diploma_data_export.json';
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        message.success('Diploma Data Exported Successfully');
+    };
+
+    // Import diploma data
+    const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const fileReader = new FileReader();
+        fileReader.onload = (e) => {
+            try {
+                const jsonData = JSON.parse(e.target?.result as string);
+                importDiplomaData(jsonData);
+                message.success('Diploma Data Imported Successfully');
+            } catch (error) {
+                message.error('Failed to import diploma data');
+            }
+        };
+        
+        if (event.target.files && event.target.files.length > 0) {
+            fileReader.readAsText(event.target.files[0]);
+        }
     };
 
     const columns = [
@@ -69,26 +140,64 @@ const DiplomaBookManagement: React.FC = () => {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (
-                <>
+                <div>
                     <Button type="link" onClick={() => handleEdit(record)}>Edit</Button>
-                </>
+                    <Popconfirm
+                        title="Are you sure you want to delete this diploma book?"
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="Yes"
+                        cancelText="No"
+                    >
+                        <Button type="link" danger>Delete</Button>
+                    </Popconfirm>
+                </div>
             ),
         }
     ];
 
     return (
         <div>
-            <Button 
-                type="primary" 
-                style={{ marginBottom: 16 }} 
-                onClick={() => {
-                    setEditingBook(null); 
-                    form.resetFields();
-                    setIsModalVisible(true);
-                }}
-            >
-                Add Diploma Book
-            </Button>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+                <div>
+                    <Button 
+                        type="primary" 
+                        style={{ marginRight: 8 }} 
+                        onClick={() => {
+                            setEditingBook(null); 
+                            form.resetFields();
+                            setIsModalVisible(true);
+                        }}
+                    >
+                        Add Diploma Book
+                    </Button>
+                    <Button 
+                        type="default" 
+                        style={{ marginRight: 8 }} 
+                        onClick={showStatistics}
+                    >
+                        View Statistics
+                    </Button>
+                    <Button 
+                        type="default" 
+                        style={{ marginRight: 8 }} 
+                        onClick={handleExport}
+                    >
+                        Export Data
+                    </Button>
+                    <input 
+                        type="file" 
+                        accept=".json" 
+                        style={{ display: 'none' }} 
+                        id="import-file"
+                        onChange={handleImport}
+                    />
+                    <label htmlFor="import-file">
+                        <Button type="default" component="span">
+                            Import Data
+                        </Button>
+                    </label>
+                </div>
+            </div>
 
             <Table 
                 columns={columns} 

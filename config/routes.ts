@@ -133,6 +133,11 @@ export default [
 				
 			},
 			{
+				"path": "/diploma-management/diploma-information",
+				"name": "Diploma Information",
+				component: "./DiplomaManagement/DiplomaInformationManagement",
+			},
+			{
 				"path": "/diploma-management/diploma-graduation-decision",
 				"name": "Graduation Decision",
 				component: "./DiplomaManagement/GraduationDecisionManagement",
@@ -148,11 +153,7 @@ export default [
 				"name": "Diploma Lookup",
 				component: "./DiplomaManagement/DiplomaLookup",
 			},
-			{
-				"path": "/diploma-management/diploma-information",
-				"name": "Diploma Information",
-				component: "./DiplomaManagement/DiplomaInformationManagement",
-			},
+			
 		]
 	},
 	
